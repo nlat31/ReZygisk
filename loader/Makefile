@@ -48,6 +48,10 @@ LIBPTRACE_STRIPPED = $(OBJ_DIR)/stripped/libzygisk_ptrace.so
 
 PLTI_DIR = src/external/plti
 CSOLOADER_DIR = src/external/csoloader
+CSOLOADER_INPUTS = $(wildcard $(CSOLOADER_DIR)/src/*.c) \
+				   $(wildcard $(CSOLOADER_DIR)/include/*.h) \
+				   $(CSOLOADER_DIR)/CMakeLists.txt
+CSOLOADER_CMAKE_BUILD_TYPE = $(if $(filter release,$(BUILD_TYPE)),Release,Debug)
 
 COMMON_INCLUDES = -Isrc/include
 INJECTOR_INCLUDES = -Isrc/include -I$(PLTI_DIR)/src -I$(CSOLOADER_DIR)/include
@@ -75,11 +79,13 @@ $(PLTI_LIB):
 		NDK_PATH=$(NDK_PATH) API_LEVEL=$(API_LEVEL)              \
 		out=$(BUILD_DIR)/obj/$(BUILD_TYPE)/plti/$(ARCH)
 
-$(CSOLOADER_LIB):
+$(CSOLOADER_LIB): $(CSOLOADER_INPUTS)
 	@mkdir -p $(dir $@)
-	$(MAKE) -C $(CSOLOADER_DIR) BUILD_TYPE=$(BUILD_TYPE) ARCH=$(ARCH) \
-		NDK_PATH=$(NDK_PATH) API_LEVEL=$(API_LEVEL)                   \
-		out=$(BUILD_DIR)/obj/$(BUILD_TYPE)/csoloader/$(ARCH)
+	cmake -S $(CSOLOADER_DIR) -B $(dir $@) \
+		-DCMAKE_TOOLCHAIN_FILE=$(NDK_PATH)/build/cmake/android.toolchain.cmake \
+		-DANDROID_ABI=$(ARCH) -DANDROID_PLATFORM=android-$(API_LEVEL) \
+		-DCMAKE_BUILD_TYPE=$(CSOLOADER_CMAKE_BUILD_TYPE)
+	cmake --build $(dir $@) --target csoloader
 
 $(OBJ_DIR)/common/%.o: src/common/%.c
 	@mkdir -p $(dir $@)
