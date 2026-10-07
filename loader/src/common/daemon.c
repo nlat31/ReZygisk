@@ -5,6 +5,7 @@
 
 #include <linux/un.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "logging.h"
 #include "misc.h"
@@ -103,6 +104,8 @@ uint32_t rezygiskd_get_process_flags(uid_t uid, const char *const process) {
 }
 
 void rezygiskd_get_info(struct rezygisk_info *info) {
+  memset(info, 0, sizeof(*info));
+
   int fd = rezygiskd_connect(1);
   if (fd == -1) {
     info->running = false;
@@ -143,6 +146,8 @@ void rezygiskd_get_info(struct rezygisk_info *info) {
 
     return;
   }
+  for (size_t i = 0; i < info->modules.modules_count; i++)
+    info->modules.modules[i] = NULL;
 
   for (size_t i = 0; i < info->modules.modules_count; i++) {
     char *module_name = read_string(fd);
@@ -163,8 +168,6 @@ void rezygiskd_get_info(struct rezygisk_info *info) {
 
       goto info_cleanup;
     }
-
-    info->modules.modules[i] = NULL;
 
     char line[1024];
     while (fgets(line, sizeof(line), module_prop) != NULL) {
@@ -232,6 +235,14 @@ bool rezygiskd_read_modules(struct zygisk_modules *modules) {
   size_t len = 0;
   safe_read(read_size_t(fd, &len), "modules count", return false);
 
+  if (len == 0) {
+    modules->modules = NULL;
+    modules->modules_count = 0;
+    close(fd);
+
+    return true;
+  }
+
   modules->modules = malloc(len * sizeof(char *));
   if (!modules->modules) {
     PLOGE("allocating modules name memory");
@@ -241,6 +252,8 @@ bool rezygiskd_read_modules(struct zygisk_modules *modules) {
     return false;
   }
   modules->modules_count = len;
+  for (size_t i = 0; i < len; i++)
+    modules->modules[i] = NULL;
 
   for (size_t i = 0; i < len; i++) {
     char *lib_path = read_string(fd);
@@ -264,6 +277,12 @@ bool rezygiskd_read_modules(struct zygisk_modules *modules) {
 }
 
 void free_modules(struct zygisk_modules *modules) {
+  if (!modules->modules) {
+    modules->modules_count = 0;
+
+    return;
+  }
+
   for (size_t i = 0; i < modules->modules_count; i++) {
     free(modules->modules[i]);
   }

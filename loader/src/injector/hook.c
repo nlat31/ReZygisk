@@ -955,7 +955,8 @@ static bool load_modules_only(void) {
   for (size_t i = 0; i < ms.modules_count; i++) {
     const char *lib_path = ms.modules[i];
 
-    if (!csoloader_load(&zygisk_modules[zygisk_module_length].lib, lib_path)) {
+    if (!csoloader_load_anonymous(&zygisk_modules[zygisk_module_length].lib,
+                                  lib_path)) {
       LOGE("Failed to load module [%s]", lib_path);
 
       /* INFO: In case a module failed to load, update the list of available modules

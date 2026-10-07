@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    if (info.modules.modules_count != 0) {
+    if (info.modules.modules_count != 0 && info.modules.modules) {
       printf("Modules: %zu\n", info.modules.modules_count);
 
       for (size_t i = 0; i < info.modules.modules_count; i++) {
